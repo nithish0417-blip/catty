@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Midnight Paws — Cat Survivor</title>
+<link rel="stylesheet" href="style.css">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4068734296772542"
+     crossorigin="anonymous"></script>
+<style id="adsense-layout">
+#ad-container{
+  position:fixed;
+  left:50%;
+  bottom:32px;
+  transform:translateX(-50%);
+  width:min(728px,90vw);
+  max-height:100px;
+  z-index:4;
+  pointer-events:auto;
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="top">
+    <div class="panel">
+      <div class="small" style="margin-bottom:5px">LIVES</div>
+      <div id="hpWrap"><div id="hp"></div></div>
+    </div>
+    <div class="panel"><span class="small">LEVEL</span> <span id="level">1</span></div>
+    <div class="panel"><span class="small">KILLS</span> <span id="kills">0</span></div>
+    <div class="panel" id="score"><span class="small">SCORE</span> <span id="scoreVal">0</span></div>
+  </div>
+  <div id="xpWrap"><div id="xp"></div></div>
+
+  <div id="message">
+    <div class="panel">
+      <h1 id="gameoverTitle">GAME OVER</h1>
+      <p id="finalText"></p>
+      <button onclick="restart()">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <div id="start">
+    <div class="card">
+      <div class="catIcon">🐈</div>
+      <h1>Midnight Paws</h1>
+      <p>A fast cat-survivor game. Survive the swarm, collect fish XP, level up and build an absurdly powerful street cat.</p>
+      <div class="controls">⌨️ WASD / Arrow Keys to move<br>🖱️ Mouse / touch aims automatically<br>🐾 Your cat attacks the nearest enemy</div>
+      <button onclick="startGame()">START HUNT</button>
+    </div>
+  </div>
+
+  <div id="levelup">
+    <div class="upcard">
+      <h2>🐾 LEVEL UP!</h2>
+      <div class="small">Choose an upgrade</div>
+      <div class="choices" id="choices"></div>
+    </div>
+  </div>
+</div>
+
+<!-- star random -->
+<div id="ad-container">
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-4068734296772542"
+       data-ad-slot="2772765857"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>
+       (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
