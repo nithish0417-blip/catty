@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Alley Cat: Nine Lives</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐱</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B0E1A;
+    --ink-2:#12172a;
+    --magenta:#FF2E8A;
+    --cyan:#3EEFD1;
+    --moon:#FFD866;
+    --violet:#5B4B8A;
+    --paper:#EDEAF0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+    background:var(--ink);
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--paper);
+    touch-action:none;
+    user-select:none;
+  }
+  #gameCanvas{
+    position:absolute; inset:0; width:100%; height:100%;
+    display:block;
+    background:
+      radial-gradient(ellipse at 20% 15%, rgba(91,75,138,0.35), transparent 55%),
+      radial-gradient(ellipse at 80% 85%, rgba(255,46,138,0.12), transparent 50%),
+      var(--ink);
+  }
+
+  .pixel{ font-family:'Press Start 2P', monospace; }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:16px 18px; pointer-events:none;
+    z-index:5;
+  }
+  .hud-block{
+    background:rgba(11,14,26,0.55);
+    border:1px solid rgba(62,239,209,0.25);
+    border-radius:10px;
+    padding:8px 14px;
+    backdrop-filter: blur(4px);
+  }
+  #nightLabel{ font-size:11px; color:var(--moon); letter-spacing:1px; }
+  #nightNum{ font-size:16px; color:var(--paper); }
+  #scoreLabel{ font-size:11px; color:var(--cyan); letter-spacing:1px; text-align:right;}
+  #scoreNum{ font-size:16px; color:var(--paper); text-align:right; }
+
+  #lives{
+    display:flex; gap:4px; margin-top:6px;
+  }
+  .paw{ font-size:18px; filter: drop-shadow(0 0 4px rgba(255,46,138,0.6)); transition: opacity .25s, transform .25s; }
+  .paw.lost{ opacity:0.15; transform:scale(0.7); filter:none; }
+
+  #waveBanner{
+    position:absolute; top:38%; left:50%; transform:translate(-50%,-50%) scale(0.8);
+    font-size:22px; color:var(--moon); text-shadow:0 0 12px rgba(255,216,102,0.8);
+    opacity:0; pointer-events:none; z-index:6; text-align:center; white-space:nowrap;
+    transition: opacity .3s, transform .3s;
+  }
+  #waveBanner.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  #waveBanner .sub{ display:block; font-family:'Space Grotesk'; font-size:13px; color:var(--paper); margin-top:10px; opacity:0.85; }
+
+  /* ---------- Overlays ---------- */
+  .overlay{
+    position:absolute; inset:0; z-index:20;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at 50% 30%, rgba(91,75,138,0.35), rgba(11,14,26,0.92) 70%);
+    text-align:center; padding:20px;
+  }
+  .hidden{ display:none !important; }
+  .panel{ max-width:480px; width:100%; }
+  .title{
+    font-size: clamp(24px,6vw,40px);
+    color:var(--magenta);
+    text-shadow: 0 0 18px rgba(255,46,138,0.6), 0 0 2px #fff;
+    margin-bottom:10px;
+    line-height:1.5;
+  }
+  .title .cat{ font-size:0.9em; filter:drop-shadow(0 0 10px rgba(62,239,209,0.7)); }
+  .tagline{ color:var(--cyan); font-size:13px; letter-spacing:1px; margin-bottom:26px; }
+  .howto{
+    text-align:left; margin:0 auto 28px; max-width:380px;
+    border-left:2px solid var(--violet); padding-left:14px;
+  }
+  .howto p{ margin:8px 0; font-size:14px; color:var(--paper); opacity:0.9; }
+  .howto b{ color:var(--moon); }
+  button.play{
+    font-family:'Press Start 2P';
+    font-size:14px;
+    background:var(--magenta);
+    color:var(--ink);
+    border:none; border-radius:8px;
+    padding:16px 30px;
+    cursor:pointer;
+    box-shadow:0 0 0 2px rgba(255,255,255,0.15), 0 8px 20px rgba(255,46,138,0.35);
+    transition: transform .15s, box-shadow .15s;
+  }
+  button.play:hover{ transform:translateY(-2px); box-shadow:0 0 0 2px rgba(255,255,255,0.25), 0 12px 26px rgba(255,46,138,0.5); }
+  button.play:active{ transform:translateY(0px) scale(0.98); }
+
+  .stat-row{ display:flex; justify-content:center; gap:26px; margin:22px 0; }
+  .stat{ text-align:center; }
+  .stat .n{ font-family:'Press Start 2P'; font-size:20px; color:var(--cyan); }
+  .stat .l{ font-size:11px; opacity:0.7; letter-spacing:1px; margin-top:6px;}
+
+  #gameOverTitle{ color:var(--magenta); }
+
+  /* ---------- Touch controls ---------- */
+  #touchControls{ position:absolute; inset:0; z-index:8; pointer-events:none; display:none; }
+  .stick-base{
+    position:absolute; bottom:34px; left:34px; width:110px; height:110px;
+    border-radius:50%; background:rgba(237,234,240,0.08); border:2px solid rgba(62,239,209,0.35);
+    pointer-events:auto;
+  }
+  .stick-nub{
+    position:absolute; width:48px; height:48px; border-radius:50%;
+    background:rgba(62,239,209,0.55); top:31px; left:31px;
+    box-shadow:0 0 12px rgba(62,239,209,0.6);
+  }
+  .fire-btn{
+    position:absolute; bottom:48px; right:40px; width:88px; height:88px; border-radius:50%;
+    background:rgba(255,46,138,0.25); border:2px solid rgba(255,46,138,0.6);
+    pointer-events:auto; display:flex; align-items:center; justify-content:center;
+    font-size:26px;
+  }
+
+  footer.credits{ margin-top:22px; font-size:10px; opacity:0.4; letter-spacing:1px; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="hud">
+  <div class="hud-block">
+    <div id="nightLabel" class="pixel">NIGHT</div>
+    <div id="nightNum" class="pixel">1</div>
+    <div id="lives"></div>
+  </div>
+  <div class="hud-block">
+    <div id="scoreLabel" class="pixel">MICE CAUGHT</div>
+    <div id="scoreNum" class="pixel">0</div>
+  </div>
+</div>
+
+<div id="waveBanner" class="pixel">NIGHT 1<span class="sub">The alley wakes up...</span></div>
+
+<div id="touchControls">
+  <div class="stick-base" id="stickBase"><div class="stick-nub" id="stickNub"></div></div>
+  <div class="fire-btn" id="fireBtn">🧶</div>
+</div>
+
+<!-- START SCREEN -->
+<div id="startScreen" class="overlay">
+  <div class="panel">
+    <div class="title pixel">ALLEY CAT<br><span class="cat">🐱</span> NINE LIVES</div>
+    <div class="tagline pixel">SURVIVE THE NIGHT SHIFT</div>
+    <div class="howto">
+      <p><b>MOVE</b> — WASD or Arrow Keys (drag joystick on mobile)</p>
+      <p><b>AIM & POUNCE</b> — Move mouse, click/hold to sling yarn (tap fire button on mobile)</p>
+      <p><b>SURVIVE</b> — Rats, dogs & bats hunt you each night. You've got 9 lives. Don't waste them.</p>
+      <p><b>SCAVENGE</b> — Catch glowing fish 🐟 to patch up a lost life.</p>
+    </div>
+    <button class="play pixel" id="startBtn">START NIGHT</button>
+    <footer class="credits pixel">MADE FOR THE ALLEY · v1.0</footer>
+  </div>
+</div>
+
+<!-- GAME OVER SCREEN -->
+<div id="gameOverScreen" class="overlay hidden">
+  <div class="panel">
+    <div class="title pixel" id="gameOverTitle">OUT OF LIVES</div>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="n pixel" id="finalScore">0</div>
+        <div class="l pixel">MICE CAUGHT</div>
+      </div>
+      <div class="stat">
+        <div class="n pixel" id="finalNight">1</div>
+        <div class="l pixel">NIGHTS SURVIVED</div>
+      </div>
+      <div class="stat">
+        <div class="n pixel" id="bestScore">0</div>
+        <div class="l pixel">BEST EVER</div>
+      </div>
+    </div>
+    <button class="play pixel" id="retryBtn">PROWL AGAIN</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, DPR;
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  if(isTouch) document.getElementById('touchControls').style.display = 'block';
+
+  // ---------- Audio (tiny WebAudio blips, no external files) ----------
+  let actx;
+  function ensureAudio(){ if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); }
+  function blip(freq, dur, type='square', vol=0.06){
+    if(!actx) return;
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g); g.connect(actx.destination);
+    const t = actx.currentTime;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    o.start(t); o.stop(t+dur);
+  }
+  const sfx = {
+    shoot: () => blip(660, 0.06, 'square', 0.04),
+    hit: () => blip(220, 0.08, 'sawtooth', 0.05),
+    kill: () => blip(880, 0.12, 'triangle', 0.06),
+    hurt: () => blip(120, 0.2, 'sawtooth', 0.09),
+    heal: () => blip(1200, 0.15, 'sine', 0.06),
+    wave: () => { blip(440,0.1,'triangle',0.05); setTimeout(()=>blip(660,0.15,'triangle',0.05),100); }
+  };
+
+  // ---------- Game State ----------
+  const MAX_LIVES = 9;
+  let state = 'start'; // start | playing | gameover
+  let score = 0, night = 1, lives = MAX_LIVES;
+  let killsThisNight = 0, killsNeeded = 10;
+  let elapsed = 0;
+
+  const player = { x:0, y:0, r:20, speed:230, invuln:0, facing:0 };
+
+  const keys = {};
+  window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if(e.key === ' ') e.preventDefault();
+  });
+  window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+  let mouse = { x:0, y:0, down:false };
+  canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  canvas.addEventListener('mousedown', e => { ensureAudio(); mouse.down = true; });
+  window.addEventListener('mouseup', () => mouse.down = false);
+
+  // touch joystick
+  let stickVec = {x:0,y:0};
+  let firing = false;
+  const stickBase = document.getElementById('stickBase');
+  const stickNub = document.getElementById('stickNub');
+  const fireBtn = document.getElementById('fireBtn');
+  let stickTouchId = null;
+  stickBase.addEventListener('touchstart', e => {
+    ensureAudio();
+    const t = e.changedTouches[0];
+    stickTouchId = t.identifier;
+    e.preventDefault();
+  }, {passive:false});
+  window.addEventListener('touchmove', e => {
+    for(const t of e.changedTouches){
+      if(t.identifier === stickTouchId){
+        const rect = stickBase.getBoundingClientRect();
+        const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+        let dx = t.clientX - cx, dy = t.clientY - cy;
+        const dist = Math.min(Math.hypot(dx,dy), 40);
+        const ang = Math.atan2(dy,dx);
+        stickVec.x = Math.cos(ang) * (dist/40);
+        stickVec.y = Math.sin(ang) * (dist/40);
+        stickNub.style.left = (31+stickVec.x*30)+'px';
+        stickNub.style.top = (31+stickVec.y*30)+'px';
+        e.preventDefault();
+      }
+    }
+  }, {passive:false});
+  window.addEventListener('touchend', e => {
+    for(const t of e.changedTouches){
+      if(t.identifier === stickTouchId){
+        stickTouchId = null; stickVec = {x:0,y:0};
+        stickNub.style.left='31px'; stickNub.style.top='31px';
+      }
+    }
+  });
+  fireBtn.addEventListener('touchstart', e => { firing = true; e.preventDefault(); }, {passive:false});
+  fireBtn.addEventListener('touchend', e => { firing = false; e.preventDefault(); }, {passive:false});
+
+  // ---------- Entities ----------
+  let projectiles = [];
+  let enemies = [];
+  let pickups = [];
+  let particles = [];
+
+  function resetGame(){
+    score = 0; night = 1; lives = MAX_LIVES;
+    killsThisNight = 0; killsNeeded = 10;
+    player.x = W/2; player.y = H/2; player.invuln = 1.2;
+    projectiles = []; enemies = []; pickups = []; particles = [];
+    elapsed = 0;
+    updateHUD();
+  }
+
+  function spawnEnemy(){
+    const types = night >= 3 ? ['rat','rat','dog','bat'] : night >= 2 ? ['rat','rat','dog'] : ['rat','rat','rat'];
+    const type = types[Math.floor(Math.random()*types.length)];
+    const edge = Math.floor(Math.random()*4);
+    let x,y;
+    if(edge===0){ x=-30; y=Math.random()*H; }
+    else if(edge===1){ x=W+30; y=Math.random()*H; }
+    else if(edge===2){ x=Math.random()*W; y=-30; }
+    else { x=Math.random()*W; y=H+30; }
+
+    const speedMul = 1 + (night-1)*0.09;
+    let e;
+    if(type==='rat') e = { type, x, y, r:14, hp:1, maxhp:1, speed:100*speedMul, emoji:'🐀', dmg:1, wobble:Math.random()*10 };
+    else if(type==='dog') e = { type, x, y, r:20, hp:3, maxhp:3, speed:62*speedMul, emoji:'🐕', dmg:2, wobble:Math.random()*10 };
+    else e = { type, x, y, r:13, hp:2, maxhp:2, speed:150*speedMul, emoji:'🦇', dmg:1, wobble:Math.random()*10, t:Math.random()*100 };
+    enemies.push(e);
+  }
+
+  function spawnPickup(x,y){
+    if(Math.random() < 0.22 && lives < MAX_LIVES){
+      pickups.push({ x, y, r:14, kind:'fish', bob:Math.random()*10 });
+    }
+  }
+
+  function shoot(dx, dy){
+    const len = Math.hypot(dx,dy) || 1;
+    projectiles.push({
+      x: player.x, y: player.y,
+      vx: dx/len * 480, vy: dy/len * 480,
+      r: 7, life: 1.1
+    });
+    sfx.shoot();
+  }
+
+  let shootCooldown = 0;
+
+  function nextNight(){
+    night++;
+    killsThisNight = 0;
+    killsNeeded = 10 + (night-1)*5;
+    showBanner(`NIGHT ${night}`, night % 3 === 0 ? 'The pack is getting hungry...' : 'Stay sharp, alley cat.');
+    sfx.wave();
+  }
+
+  let bannerTimeout;
+  function showBanner(main, sub){
+    const el = document.getElementById('waveBanner');
+    el.innerHTML = main + `<span class="sub">${sub}</span>`;
+    el.classList.add('show');
+    clearTimeout(bannerTimeout);
+    bannerTimeout = setTimeout(()=> el.classList.remove('show'), 2200);
+  }
+
+  function updateHUD(){
+    document.getElementById('nightNum').textContent = night;
+    document.getElementById('scoreNum').textContent = score;
+    const livesEl = document.getElementById('lives');
+    livesEl.innerHTML = '';
+    for(let i=0;i<MAX_LIVES;i++){
+      const s = document.createElement('span');
+      s.className = 'paw' + (i < lives ? '' : ' lost');
+      s.textContent = '🐾';
+      livesEl.appendChild(s);
+    }
+  }
+
+  function hurtPlayer(dmg){
+    if(player.invuln > 0) return;
+    lives -= dmg;
+    player.invuln = 1.1;
+    sfx.hurt();
+    updateHUD();
+    if(lives <= 0){
+      lives = 0; updateHUD();
+      endGame();
+    }
+  }
+
+  function endGame(){
+    state = 'gameover';
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('finalNight').textContent = night;
+    const best = Math.max(score, parseInt(localStorage.getItem('alleycat_best')||'0'));
+    localStorage.setItem('alleycat_best', best);
+    document.getElementById('bestScore').textContent = best;
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+  }
+
+  // ---------- Update ----------
+  let lastTime = performance.now();
+  function update(dt){
+    elapsed += dt;
+
+    // movement
+    let mx=0, my=0;
+    if(keys['w']||keys['arrowup']) my -= 1;
+    if(keys['s']||keys['arrowdown']) my += 1;
+    if(keys['a']||keys['arrowleft']) mx -= 1;
+    if(keys['d']||keys['arrowright']) mx += 1;
+    if(isTouch){ mx += stickVec.x; my += stickVec.y; }
+    const mlen = Math.hypot(mx,my);
+    if(mlen > 0){
+      player.x += (mx/mlen) * player.speed * dt;
+      player.y += (my/mlen) * player.speed * dt;
+      player.facing = Math.atan2(my,mx);
+    }
+    player.x = Math.max(player.r, Math.min(W-player.r, player.x));
+    player.y = Math.max(player.r, Math.min(H-player.r, player.y));
+    if(player.invuln > 0) player.invuln -= dt;
+
+    // shooting
+    shootCooldown -= dt;
+    let wantShoot = false, aimDx=0, aimDy=0;
+    if(!isTouch && mouse.down){
+      wantShoot = true; aimDx = mouse.x - player.x; aimDy = mouse.y - player.y;
+    } else if(isTouch && firing){
+      // auto aim nearest enemy
+      let nearest = null, nd = Infinity;
+      for(const e of enemies){
+        const d = Math.hypot(e.x-player.x, e.y-player.y);
+        if(d < nd){ nd = d; nearest = e; }
+      }
+      if(nearest){ wantShoot = true; aimDx = nearest.x-player.x; aimDy = nearest.y-player.y; }
+    }
+    if(wantShoot && shootCooldown <= 0){
+      shoot(aimDx, aimDy);
+      shootCooldown = 0.18;
+    }
+
+    // spawn timer
+    spawnTimer -= dt;
+    const spawnInterval = Math.max(0.35, 1.1 - night*0.06);
+    if(spawnTimer <= 0 && enemies.length < 10 + night){
+      spawnEnemy();
+      spawnTimer = spawnInterval;
+    }
+
+    // projectiles
+    for(let i=projectiles.length-1;i>=0;i--){
+      const p = projectiles[i];
+      p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt;
+      if(p.life<=0 || p.x<-20||p.x>W+20||p.y<-20||p.y>H+20){ projectiles.splice(i,1); continue; }
+    }
+
+    // enemies
+    for(let i=enemies.length-1;i>=0;i--){
+      const e = enemies[i];
+      const dx = player.x-e.x, dy = player.y-e.y;
+      const d = Math.hypot(dx,dy) || 1;
+      let sx = dx/d, sy = dy/d;
+      if(e.type==='bat'){
+        e.t += dt*6;
+        sx += Math.cos(e.t)*0.6; sy += Math.sin(e.t)*0.6;
+        const nlen = Math.hypot(sx,sy)||1; sx/=nlen; sy/=nlen;
+      }
+      e.x += sx*e.speed*dt; e.y += sy*e.speed*dt;
+
+      if(d < e.r + player.r){
+        hurtPlayer(e.dmg);
+        enemies.splice(i,1);
+        continue;
+      }
+
+      for(let j=projectiles.length-1;j>=0;j--){
+        const p = projectiles[j];
+        if(Math.hypot(p.x-e.x,p.y-e.y) < e.r+p.r){
+          e.hp -= 1;
+          projectiles.splice(j,1);
+          spawnHitParticles(e.x,e.y);
+          if(e.hp <= 0){
+            score += e.type==='dog'?30:e.type==='bat'?20:10;
+            killsThisNight++;
+            spawnPickup(e.x,e.y);
+            enemies.splice(i,1);
+            sfx.kill();
+          } else {
+            sfx.hit();
+          }
+          break;
+        }
+      }
+    }
+
+    if(killsThisNight >= killsNeeded){
+      nextNight();
+    }
+
+    // pickups
+    for(let i=pickups.length-1;i>=0;i--){
+      const pu = pickups[i];
+      pu.bob += dt*4;
+      if(Math.hypot(pu.x-player.x, pu.y-player.y) < pu.r + player.r){
+        lives = Math.min(MAX_LIVES, lives+1);
+        sfx.heal();
+        updateHUD();
+        pickups.splice(i,1);
+      }
+    }
+
+    // particles
+    for(let i=particles.length-1;i>=0;i--){
+      const pt = particles[i];
+      pt.x += pt.vx*dt; pt.y += pt.vy*dt; pt.life -= dt; pt.vx*=0.9; pt.vy*=0.9;
+      if(pt.life<=0) particles.splice(i,1);
+    }
+
+    updateHUD();
+  }
+
+  let spawnTimer = 0;
+  function spawnHitParticles(x,y){
+    for(let i=0;i<5;i++){
+      const a = Math.random()*Math.PI*2;
+      particles.push({ x,y, vx:Math.cos(a)*120, vy:Math.sin(a)*120, life:0.35, color: '#3EEFD1' });
+    }
+  }
+
+  // ---------- Draw ----------
+  function drawGrid(){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(91,75,138,0.12)';
+    ctx.lineWidth = 1;
+    const step = 60;
+    for(let x = (elapsed*10)%step; x<W; x+=step){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    }
+    for(let y=0;y<H;y+=step){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawEmoji(emoji, x, y, size){
+    ctx.font = size+'px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, x, y);
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    drawGrid();
+
+    // pickups
+    for(const pu of pickups){
+      const yoff = Math.sin(pu.bob)*4;
+      ctx.save();
+      ctx.shadowColor = '#FFD866'; ctx.shadowBlur = 14;
+      drawEmoji('🐟', pu.x, pu.y+yoff, 26);
+      ctx.restore();
+    }
+
+    // enemies
+    for(const e of enemies){
+      ctx.save();
+      if(e.type==='dog') ctx.shadowColor='rgba(255,46,138,0.5)';
+      else if(e.type==='bat') ctx.shadowColor='rgba(91,75,138,0.6)';
+      else ctx.shadowColor='rgba(0,0,0,0.4)';
+      ctx.shadowBlur = 10;
+      drawEmoji(e.emoji, e.x, e.y, e.r*2.4);
+      ctx.restore();
+      if(e.maxhp>1){
+        const w = e.r*2;
+        ctx.fillStyle='rgba(0,0,0,0.4)';
+        ctx.fillRect(e.x-w/2, e.y-e.r-12, w, 4);
+        ctx.fillStyle='#FF2E8A';
+        ctx.fillRect(e.x-w/2, e.y-e.r-12, w*(e.hp/e.maxhp), 4);
+      }
+    }
+
+    // projectiles (yarn balls)
+    for(const p of projectiles){
+      ctx.save();
+      ctx.shadowColor = '#3EEFD1'; ctx.shadowBlur = 10;
+      ctx.fillStyle = '#3EEFD1';
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // particles
+    for(const pt of particles){
+      ctx.globalAlpha = Math.max(pt.life*2,0);
+      ctx.fillStyle = pt.color;
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,3,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // player
+    ctx.save();
+    if(player.invuln > 0 && Math.floor(elapsed*14)%2===0){ ctx.globalAlpha = 0.4; }
+    ctx.shadowColor = '#FF2E8A'; ctx.shadowBlur = 16;
+    drawEmoji('🐱', player.x, player.y, player.r*2.6);
+    ctx.restore();
+
+    // aim line (desktop only)
+    if(!isTouch && state==='playing'){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(62,239,209,0.25)';
+      ctx.setLineDash([4,6]);
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y);
+      ctx.lineTo(mouse.x, mouse.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ---------- Loop ----------
+  function loop(now){
+    const dt = Math.min((now - lastTime)/1000, 0.05);
+    lastTime = now;
+    if(state === 'playing'){
+      update(dt);
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- Screen wiring ----------
+  document.getElementById('startBtn').addEventListener('click', () => {
+    ensureAudio();
+    document.getElementById('startScreen').classList.add('hidden');
+    resetGame();
+    state = 'playing';
+    showBanner('NIGHT 1', 'The alley wakes up...');
+  });
+  document.getElementById('retryBtn').addEventListener('click', () => {
+    document.getElementById('gameOverScreen').classList.add('hidden');
+    resetGame();
+    state = 'playing';
+    showBanner('NIGHT 1', 'The alley wakes up...');
+  });
+
+  player.x = W/2; player.y = H/2;
+  updateHUD();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
